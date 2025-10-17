@@ -1,33 +1,31 @@
 import { useForm } from "react-hook-form"
 import z from "zod";
-import { auth } from '../lib/auth'
+import { auth } from "../lib/auth"
 
 const SignUpSchema = z.object({
   name: z.string(),
-  email: z.email('Digite um e-mail válido'),
+  email: z.string().email("Digite um e-mail válido"),
+  phone: z.string().min(10, "Digite um telefone válido"),
   password: z.string().min(3).max(100),
 });
 
 type SignUpSchema = z.infer<typeof SignUpSchema>;
 
-export function SignUp(){
-const {register, handleSubmit, formState} = useForm<SignUpSchema>()
+export function SignUp() {
+  const { register, handleSubmit, formState } = useForm<SignUpSchema>();
 
-  async function handleSignUp({name, email, password}:SignUpSchema){
-    await auth.signUp.email({
-      name,
-      email,
-      password,
-      callbackURL:'http://localhost:5173',
-    },{
-      onError(context) {
-        if(context.error.message){
-          alert(context.error.message)
-        }else{
-          alert('falha no processo de criação de conta')
-        }
+  async function handleSignUp({ name, email, password, phone }: SignUpSchema) {
+    await auth.signUp.email(
+      { name, email, password, phone },
+      {
+        onSuccess() {
+          window.location.assign("http://localhost:5173/card");
+        },
+        onError(ctx) {
+          alert(ctx.error?.message ?? "Falha no cadastro");
+        },
       }
-    })
+    );
   }
 
   return (
@@ -43,21 +41,28 @@ const {register, handleSubmit, formState} = useForm<SignUpSchema>()
         <input
           type="text"
           placeholder="Digite seu nome"
-          {...register('name')}
+          {...register("name")}
           className="bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
         />
 
         <input
           type="email"
           placeholder="Digite seu e-mail"
-          {...register('email')}
+          {...register("email")}
+          className="bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
+        />
+
+        <input
+          type="tel"
+          placeholder="Digite seu telefone"
+          {...register("phone", { required: "O telefone é obrigatório" })}
           className="bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
         />
 
         <input
           type="password"
           placeholder="Digite sua senha"
-          {...register('password')}
+          {...register("password")}
           className="bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
         />
 
@@ -78,10 +83,7 @@ const {register, handleSubmit, formState} = useForm<SignUpSchema>()
             Faça login
           </a>
         </p>
-
       </form>
     </div>
-
-
-  )
+  );
 }
