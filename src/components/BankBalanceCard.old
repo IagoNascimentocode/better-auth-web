@@ -1,0 +1,717 @@
+// ==========================================
+// 1) API Client + Tipos (domínio ajustado)
+// ==========================================
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, {
+    method: init?.method ?? "POST",
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    body: init?.body,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Request failed: ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+const BASE = "http://localhost:3333";
+
+export type TransactionType = "income" | "expense";
+
+export interface ICreateTransactionPayload {
+  title: string;
+  amount: string;     // string (ex: "123.45")
+  type: TransactionType;
+  date: string;       // ISO string
+  notes?: string;
+  categoryId: string; // uuid
+  userId: string;     // uuid
+}
+
+export interface TransactionEntity {
+  id: string;         // <-- NOVO no domínio do front
+  title: string;
+  amount: string;
+  type: TransactionType;
+  date: string;       // ISO
+  notes?: string | null;
+  categoryId: string;
+  userId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function createTransaction(
+  payload: ICreateTransactionPayload
+): Promise<TransactionEntity> {
+  const data = await api<TransactionEntity[]>(
+    `${BASE}/transactions/create`,
+    { method: "POST", body: JSON.stringify(payload) }
+  );
+  return Array.isArray(data) ? data[0] : (data as unknown as TransactionEntity);
+}
+
+export async function updateTransaction(
+  id: string,
+  changes: Partial<Pick<TransactionEntity,"title"|"amount"|"type"|"date"|"notes"|"categoryId">>
+): Promise<TransactionEntity> {
+  // ajuste conforme seu backend (PATCH recomendado)
+  const data = await api<TransactionEntity>(
+    `${BASE}/transactions/update/${id}`,
+    { method: "PATCH", body: JSON.stringify(changes) }
+  );
+  return data;
+}
+
+export async function listTransactions(userId: string): Promise<TransactionEntity[]> {
+  return api<TransactionEntity[]>(
+    `${BASE}/transactions/list/${userId}`,
+    { method: "GET" }
+  );
+}
+
+// =============================
+// 2) Modal de criação (form)
+// =============================
+import React from "react";
+import { X } from "lucide-react";
+
+type CreateTransactionModalProps = {
+  open: boolean;
+  onClose: () => void;
+  defaultType?: TransactionType;     // prefill a partir do botão clicado
+  userId: string;
+  defaultCategoryId: string;
+  onCreate: (payload: ICreateTransactionPayload) => Promise<TransactionEntity>;
+};
+
+export function CreateTransactionModal({
+  open,
+  onClose,
+  defaultType = "income",
+  userId,
+  defaultCategoryId,
+  onCreate,
+}: CreateTransactionModalProps) {
+  const [title, setTitle] = React.useState("");
+  const [amount, setAmount] = React.useState("");
+  const [type, setType] = React.useState<TransactionType>(defaultType);
+  const [date, setDate] = React.useState(() => new Date().toISOString().slice(0,16)); // yyyy-MM-ddTHH:mm
+  const [notes, setNotes] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (open) {
+      setType(defaultType);
+      setTitle("");
+      setAmount("");
+      setNotes("");
+      setDate(new Date().toISOString().slice(0,16));
+      setError(null);
+    }
+  }, [open, defaultType]);
+
+  function localToISO(local: string) {
+    const d = new Date(local);
+    return d.toISOString();
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      setBusy(true);
+      setError(null);
+      if (!title.trim()) throw new Error("Informe o título");
+      if (!amount.trim() || Number.isNaN(Number(amount))) throw new Error("Valor inválido");
+
+      const payload: ICreateTransactionPayload = {
+        title: title.trim(),
+        amount: Number(amount).toFixed(2),
+        type,
+        date: localToISO(date),
+        notes: notes.trim() ? notes.trim() : undefined,
+        categoryId: defaultCategoryId,
+        userId,
+      };
+      await onCreate(payload);
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Falha ao criar");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* backdrop */}
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      {/* modal */}
+      <form
+        onSubmit={submit}
+        className="relative w-full max-w-lg rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-2xl"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 rounded-lg border border-zinc-700/60 bg-zinc-800 p-2 text-zinc-300 hover:bg-zinc-700"
+          aria-label="Fechar"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <h3 className="mb-4 text-lg font-semibold text-zinc-100">Nova transação</h3>
+
+        <div className="grid grid-cols-1 gap-3">
+          <input
+            className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+            placeholder="Título"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+              placeholder="Valor (ex: 123.45)"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <select
+              className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+              value={type}
+              onChange={(e) => setType(e.target.value as TransactionType)}
+            >
+              <option value="income">Entrada</option>
+              <option value="expense">Saída</option>
+            </select>
+          </div>
+          <input
+            type="datetime-local"
+            className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+          <textarea
+            className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+            placeholder="Notas (opcional)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+
+        {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
+
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-zinc-700/60 bg-zinc-800 px-4 py-2 font-semibold text-zinc-200 hover:bg-zinc-700"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-emerald-950 hover:brightness-95 disabled:opacity-50"
+          >
+            {busy ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ==================================================
+// 3) BankBalanceCard atualizado (abre modal)
+// ==================================================
+import { ArrowDownRight, ArrowUpRight, Eye, EyeOff, RefreshCw, Wallet, Plus, Send, Pencil } from "lucide-react";
+
+export type BankBalanceCardProps = {
+  balance: number;
+  available?: number;
+  incomeToday?: number;
+  expenseToday?: number;
+  accountLabel?: string;
+  currency?: string;
+  locale?: string;
+  loading?: boolean;
+  onRefresh?: () => void | Promise<void>;
+  className?: string;
+
+  // callbacks/domínio
+  onCreateTransaction?: (payload: ICreateTransactionPayload) => Promise<TransactionEntity>;
+  userId?: string;
+  defaultCategoryId?: string;
+};
+
+export default function BankBalanceCard({
+  balance,
+  available,
+  incomeToday,
+  expenseToday,
+  accountLabel = "Conta •••• 1234",
+  currency = "BRL",
+  locale = "pt-BR",
+  loading = false,
+  onRefresh,
+  className = "",
+  onCreateTransaction,
+  userId,
+  defaultCategoryId,
+}: BankBalanceCardProps) {
+  const [hidden, setHidden] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  // modal state
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [prefillType, setPrefillType] = React.useState<TransactionType>("income");
+
+  const fmt = React.useMemo(
+    () => new Intl.NumberFormat(locale, { style: "currency", currency }),
+    [locale, currency]
+  );
+  const mask = (v?: number) => (hidden ? "••••" : v != null ? fmt.format(v) : "—");
+
+  async function handleRefresh() {
+    if (!onRefresh) return;
+    try {
+      setRefreshing(true);
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  function openCreate(type: TransactionType) {
+    if (!onCreateTransaction || !userId || !defaultCategoryId) return;
+    setPrefillType(type);
+    setCreateOpen(true);
+  }
+
+  return (
+    <div
+      className={
+        "relative overflow-hidden rounded-2xl p-5 sm:p-6 shadow-xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border border-zinc-700/40 " +
+        className
+      }
+      role="region"
+      aria-label="Cartão de saldo da conta"
+    >
+      <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
+
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2 text-zinc-200">
+          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-zinc-800 border border-zinc-700/60">
+            <Wallet className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="leading-tight">
+            <p className="text-xs uppercase tracking-wide text-zinc-400">Saldo disponível</p>
+            <p className="text-sm font-medium text-zinc-300">{accountLabel}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setHidden((s) => !s)}
+            className="inline-flex items-center gap-1 rounded-xl border border-zinc-700/60 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
+          >
+            {hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {hidden ? "Mostrar" : "Ocultar"}
+          </button>
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className={`inline-flex items-center rounded-xl border border-zinc-700/60 bg-zinc-800 p-2 text-zinc-200 hover:bg-zinc-700 ${refreshing ? "animate-spin" : ""}`}
+              aria-label="Atualizar"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 sm:mt-5">
+        <div className="text-4xl sm:text-5xl font-semibold tracking-tight text-zinc-50 tabular-nums">
+          {loading ? <div className="h-10 sm:h-12 w-48 animate-pulse rounded-lg bg-zinc-700/40" /> : mask(balance)}
+        </div>
+        <p className="mt-1 text-sm text-zinc-400">
+          Disponível: <span className="font-medium text-zinc-300">{loading ? "—" : mask(available ?? balance)}</span>
+        </p>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <ArrowDownRight className="h-4 w-4" />
+            <span className="text-xs uppercase tracking-wide">Entradas hoje</span>
+          </div>
+          <div className="mt-1 text-lg font-semibold text-emerald-300 tabular-nums">
+            {loading ? "—" : mask(incomeToday ?? 0)}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-3">
+          <div className="flex items-center gap-2 text-rose-400">
+            <ArrowUpRight className="h-4 w-4" />
+            <span className="text-xs uppercase tracking-wide">Saídas hoje</span>
+          </div>
+          <div className="mt-1 text-lg font-semibold text-rose-300 tabular-nums">
+            {loading ? "—" : mask(expenseToday ?? 0)}
+          </div>
+        </div>
+      </div>
+
+      {/* ações -> abrem modal */}
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => openCreate("income")}
+          className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-sm hover:brightness-95 active:scale-[0.99]"
+        >
+          <Plus className="h-4 w-4" /> Adicionar
+        </button>
+        <button
+          type="button"
+          onClick={() => openCreate("expense")}
+          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-700/60 bg-zinc-800 px-4 py-2 font-semibold text-zinc-200 shadow-sm hover:bg-zinc-700 active:scale-[0.99]"
+        >
+          <Send className="h-4 w-4" /> Transferir
+        </button>
+      </div>
+
+      {/* modal controlado */}
+      {onCreateTransaction && userId && defaultCategoryId && (
+        <CreateTransactionModal
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          defaultType={prefillType}
+          userId={userId}
+          defaultCategoryId={defaultCategoryId}
+          onCreate={onCreateTransaction}
+        />
+      )}
+    </div>
+  );
+}
+
+// ==================================================
+// 4) Utilitários e TransactionList (com id)
+// ==================================================
+export function isoToLocalInput(iso: string) {
+  try {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch { return ""; }
+}
+export function localInputToIso(local: string) { return new Date(local).toISOString(); }
+
+type TransactionListProps = {
+  items: TransactionEntity[];
+  onSave: (id: string, changes: Partial<TransactionEntity>) => Promise<TransactionEntity>;
+  onLocalUpdate?: (updated: TransactionEntity) => void;
+};
+
+export function TransactionList({ items, onSave, onLocalUpdate }: TransactionListProps) {
+  const [editing, setEditing] = React.useState<string | null>(null);
+  const [form, setForm] = React.useState<Partial<TransactionEntity>>({});
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  function startEdit(tx: TransactionEntity) {
+    setEditing(tx.id);
+    setForm({
+      title: tx.title,
+      amount: tx.amount,
+      type: tx.type,
+      date: tx.date,
+      notes: tx.notes ?? undefined,
+      categoryId: tx.categoryId,
+    });
+    setError(null);
+  }
+  function cancel() { setEditing(null); setForm({}); setError(null); }
+
+  async function save(id: string) {
+    try {
+      setSaving(true);
+      const payload: Partial<TransactionEntity> = {
+        ...form,
+        amount: form.amount != null ? String(form.amount) : undefined,
+        date: form.date ? new Date(form.date).toISOString() : undefined,
+      };
+      const updated = await onSave(id, payload);
+      onLocalUpdate?.(updated);
+      cancel();
+    } catch (e: any) {
+      setError(e?.message || "Falha ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 space-y-3">
+      {items.map((tx) => {
+        const isEditing = editing === tx.id;
+        return (
+          <div key={tx.id} className="rounded-2xl border border-zinc-700/40 bg-zinc-900 p-4">
+            {!isEditing ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-zinc-100 font-medium truncate">{tx.title}</p>
+                  <p className="text-xs text-zinc-400">{new Date(tx.date).toLocaleString("pt-BR")}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`tabular-nums font-semibold ${tx.type === "income" ? "text-emerald-400" : "text-rose-400"}`}>
+                    {Number(tx.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                  <button
+                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
+                    onClick={() => startEdit(tx)}
+                  >
+                    <Pencil className="h-4 w-4" /> Editar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                <input
+                  className="md:col-span-2 rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+                  placeholder="Título"
+                  value={form.title ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                />
+                <input
+                  className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+                  placeholder="Valor (ex: 123.45)"
+                  value={form.amount ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                />
+                <select
+                  className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+                  value={form.type ?? "income"}
+                  onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as TransactionType }))}
+                >
+                  <option value="income">Entrada</option>
+                  <option value="expense">Saída</option>
+                </select>
+                <input
+                  type="datetime-local"
+                  className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+                  value={isoToLocalInput(form.date ?? new Date().toISOString())}
+                  onChange={(e) => setForm((f) => ({ ...f, date: localInputToIso(e.target.value) }))}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={saving}
+                    onClick={() => save(editing!)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-emerald-950 hover:brightness-95 disabled:opacity-50"
+                  >
+                    {saving ? "Salvando…" : "Salvar"}
+                  </button>
+                  <button
+                    disabled={saving}
+                    onClick={cancel}
+                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-800 px-4 py-2 font-semibold text-zinc-200 hover:bg-zinc-700"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+                {error && <p className="md:col-span-6 text-sm text-rose-400">{error}</p>}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ==================================================
+// 5) Demo Page com otimista + modal
+// ==================================================
+export function BankBalanceCardDemo() {
+  const [balance, setBalance] = React.useState(12500.45);
+  const [available, setAvailable] = React.useState(12000);
+  const [incomeToday, setIncomeToday] = React.useState(349.9);
+  const [expenseToday, setExpenseToday] = React.useState(120.0);
+  const [loading, setLoading] = React.useState(false);
+  const [toast, setToast] = React.useState<string | null>(null);
+
+  const userId = "0199f54d-b9e6-7000-9cb6-ca7c21ca0fcc";
+  const defaultCategoryId = "2db3bf90-d8e9-45de-b1d1-8e8ab9c749dd";
+
+  const [transactions, setTransactions] = React.useState<TransactionEntity[]>([
+    {
+      id: "seed-1",
+      title: "Venda Pix",
+      amount: "200.00",
+      type: "income",
+      date: new Date().toISOString(),
+      categoryId: defaultCategoryId,
+      userId,
+    },
+    {
+      id: "seed-2",
+      title: "Café",
+      amount: "12.50",
+      type: "expense",
+      date: new Date().toISOString(),
+      categoryId: "9f9e2050-8d55-497e-a462-f6af7101167b",
+      userId,
+    },
+  ]);
+
+  function notify(msg: string) { setToast(msg); setTimeout(() => setToast(null), 1400); }
+  const signed = (tx: Pick<TransactionEntity,"amount"|"type">) =>
+    (tx.type === "income" ? 1 : -1) * Number(tx.amount);
+
+  async function onCreate(payload: ICreateTransactionPayload) {
+    const isIncome = payload.type === "income";
+    const snap = {
+      balance, available: available ?? 0,
+      incomeToday: incomeToday ?? 0, expenseToday: expenseToday ?? 0,
+      transactions: [...transactions],
+    };
+
+    const v = Number(payload.amount);
+    const today = new Date().toDateString();
+    const tempId = `temp-${Date.now()}`;
+    const tempTx: TransactionEntity = {
+      id: tempId,
+      title: payload.title,
+      amount: payload.amount,
+      type: payload.type,
+      date: payload.date,
+      notes: payload.notes ?? null,
+      categoryId: payload.categoryId,
+      userId: payload.userId,
+    };
+    setTransactions((arr) => [tempTx, ...arr]);
+
+    // otimista
+    setBalance((b) => b + (isIncome ? v : -v));
+    setAvailable((a) => (a ?? 0) + (isIncome ? v : -v));
+    if (new Date(payload.date).toDateString() === today) {
+      if (isIncome) setIncomeToday((x) => (x ?? 0) + v);
+      else setExpenseToday((x) => (x ?? 0) + v);
+    }
+    notify(`${isIncome ? "+" : "-"} ${v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`);
+
+    try {
+      const created = await createTransaction(payload);
+      setTransactions((arr) => arr.map((t) => (t.id === tempId ? created : t)));
+      return created;
+    } catch (err) {
+      // rollback
+      setBalance(snap.balance); setAvailable(snap.available);
+      setIncomeToday(snap.incomeToday); setExpenseToday(snap.expenseToday);
+      setTransactions(snap.transactions);
+      notify("Falha ao criar transação");
+      throw err;
+    }
+  }
+
+  async function onSaveTransaction(id: string, changes: Partial<TransactionEntity>) {
+    const original = transactions.find((t) => t.id === id);
+    if (!original) throw new Error("Transação não encontrada");
+
+    const today = new Date().toDateString();
+    const snap = {
+      balance, available: available ?? 0,
+      incomeToday: incomeToday ?? 0, expenseToday: expenseToday ?? 0,
+      transactions: [...transactions],
+    };
+
+    const updatedLocal: TransactionEntity = {
+      ...original,
+      ...changes,
+      amount: changes.amount != null ? String(changes.amount) : original.amount,
+      date: changes.date ? new Date(changes.date).toISOString() : original.date,
+      type: (changes.type as TransactionType) ?? original.type,
+      title: changes.title ?? original.title,
+      notes: changes.notes ?? original.notes,
+      categoryId: changes.categoryId ?? original.categoryId,
+    };
+
+    setTransactions((arr) => arr.map((t) => (t.id === id ? updatedLocal : t)));
+
+    const diff = signed(updatedLocal) - signed(original);
+    setBalance((b) => b + diff);
+    setAvailable((a) => (a ?? 0) + diff);
+
+    const origIsToday = new Date(original.date).toDateString() === today;
+    const newIsToday = new Date(updatedLocal.date).toDateString() === today;
+    if (origIsToday) {
+      if (original.type === "income") setIncomeToday((x) => (x ?? 0) - Number(original.amount));
+      else setExpenseToday((x) => (x ?? 0) - Number(original.amount));
+    }
+    if (newIsToday) {
+      if (updatedLocal.type === "income") setIncomeToday((x) => (x ?? 0) + Number(updatedLocal.amount));
+      else setExpenseToday((x) => (x ?? 0) + Number(updatedLocal.amount));
+    }
+
+    try {
+      const persisted = await updateTransaction(id, {
+        title: updatedLocal.title,
+        amount: updatedLocal.amount,
+        type: updatedLocal.type,
+        date: updatedLocal.date,
+        notes: updatedLocal.notes ?? undefined,
+        categoryId: updatedLocal.categoryId,
+      });
+      // se o backend normalizar algo, atualiza com o retornado
+      setTransactions((arr) => arr.map((t) => (t.id === id ? persisted : t)));
+      return persisted;
+    } catch (e) {
+      setBalance(snap.balance); setAvailable(snap.available);
+      setIncomeToday(snap.incomeToday); setExpenseToday(snap.expenseToday);
+      setTransactions(snap.transactions);
+      throw e;
+    }
+  }
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 700));
+    setLoading(false);
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto p-6">
+      <BankBalanceCard
+        balance={balance}
+        available={available}
+        incomeToday={incomeToday}
+        expenseToday={expenseToday}
+        accountLabel="Conta Corrente •••• 8172"
+        onRefresh={handleRefresh}
+        loading={loading}
+        onCreateTransaction={onCreate}
+        userId={userId}
+        defaultCategoryId={defaultCategoryId}
+      />
+
+      <TransactionList
+        items={transactions}
+        onSave={onSaveTransaction}
+        onLocalUpdate={(updated) =>
+          setTransactions((arr) => arr.map((t) => (t.id === updated.id ? updated : t)))
+        }
+      />
+
+      {toast && (
+        <div className="mt-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 px-3 py-2 text-sm text-emerald-300">
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}

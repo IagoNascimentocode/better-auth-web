@@ -19,7 +19,7 @@ export function SignUp() {
       { name, email, password, phone },
       {
         onSuccess() {
-          window.location.assign("http://localhost:5173/card");
+          window.location.assign("http://localhost:5173/bank");
         },
         onError(ctx) {
           alert(ctx.error?.message ?? "Falha no cadastro");
