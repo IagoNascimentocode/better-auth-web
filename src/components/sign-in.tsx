@@ -16,7 +16,7 @@ const {register, handleSubmit, formState} = useForm<SignInSchema>()
     await auth.signIn.email({
       email,
       password,
-      callbackURL:'http://localhost:5173/card'
+      callbackURL:'http://localhost:5173/bank'
     },{
       onError(context) {
         if(context.error.message){
