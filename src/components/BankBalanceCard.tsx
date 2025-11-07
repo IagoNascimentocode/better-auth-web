@@ -15,7 +15,7 @@ export type BankBalanceCardProps = {
   loading?: boolean;
   onRefresh?: () => void | Promise<void>;
   className?: string;
-  onCreateTransaction?: (payload: ICreateTransactionPayload) => Promise<TransactionEntity>;
+  onCreateTransaction?: (payload: ICreateTransactionPayload) => Promise<void>;
   userId?: string;
   defaultCategoryId?: string;
 };
@@ -65,7 +65,21 @@ export default function BankBalanceCard(props: BankBalanceCardProps) {
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setHidden((s) => !s)}
-                  className="inline-flex items-center gap-1 rounded-xl border border-zinc-700/60 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-700">
+                  className="
+                  py-2
+                  px-3
+                  gap-1
+                  border
+                  text-xs
+                  rounded-xl
+                  inline-flex
+                  font-medium
+                  items-center
+                  bg-zinc-800
+                  text-zinc-200
+                  hover:bg-zinc-700
+                  border-zinc-700/60
+                  ">
             {hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             {hidden ? "Mostrar" : "Ocultar"}
           </button>

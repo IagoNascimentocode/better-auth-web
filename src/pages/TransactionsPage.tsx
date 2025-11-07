@@ -3,10 +3,12 @@ import React from "react";
 import type { TransactionEntity } from "../features/transactions/types";
 import { listTransactions, updateTransaction } from "../features/transactions/api";
 import TransactionList from "../components/transactions/TransactionList";
+import { useSession } from "../lib/useSession";
 
 
 export default function TransactionsPage() {
-  const userId = "0199f54d-b9e6-7000-9cb6-ca7c21ca0fcc";
+  const { data: session, isLoading: loadingSession } = useSession();
+  const userId = session?.user?.id;
   const [items, setItems] = React.useState<TransactionEntity[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
