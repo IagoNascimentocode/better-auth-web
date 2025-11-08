@@ -1,8 +1,7 @@
-// src/components/bank/BankBalanceCard.tsx
 import React from "react";
-import { ArrowDownRight, ArrowUpRight, Eye, EyeOff, RefreshCw, Wallet, Plus, Send } from "lucide-react";
-import type { ICreateTransactionPayload, TransactionEntity, TransactionType } from "../features/transactions/types";
 import CreateTransactionModal from "./transactions/CreateTransactionModal";
+import type { ICreateTransactionPayload, TransactionType } from "../features/transactions/types";
+import { ArrowDownRight, ArrowUpRight, Eye, EyeOff, RefreshCw, Wallet, Plus, Send } from "lucide-react";
 
 export type BankBalanceCardProps = {
   balance: number;

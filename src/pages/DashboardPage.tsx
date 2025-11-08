@@ -1,8 +1,8 @@
 // src/pages/DashboardPage.tsx
 import React from "react";
-import BankBalanceCard from "../components/BankBalanceCard";
 import { useSession } from "../lib/useSession";
 import { useBalance } from "../features/users/hooks";
+import BankBalanceCard from "../components/BankBalanceCard";
 import { useCreateTransaction } from "../features/transactions/mutations";
 import type { ICreateTransactionPayload } from "../features/transactions/types";
 
@@ -23,9 +23,8 @@ export default function DashboardPage() {
   async function onCreate(payload: ICreateTransactionPayload) {
     const enriched = { ...payload, categoryId: payload.categoryId ?? DEFAULT_CATEGORY_ID };
     const delta = Number(enriched.amount) * (enriched.type === "income" ? 1 : -1);
-
-    // otimista também nas métricas do dia
     const isToday = new Date(enriched.date).toDateString() === new Date().toDateString();
+
     const rollback = {
       incomeToday,
       expenseToday,

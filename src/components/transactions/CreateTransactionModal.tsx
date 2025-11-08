@@ -1,8 +1,7 @@
 import React from "react";
-import { X } from "lucide-react";
-
 import Modal from "../ui/Modal";
-import type { ICreateTransactionPayload, TransactionEntity, TransactionType } from "../BankBalanceCard.old";
+import { X } from "lucide-react";
+import type { ICreateTransactionPayload, TransactionType } from "../../features/transactions/types";
 
 type Props = {
   open: boolean;
@@ -10,7 +9,7 @@ type Props = {
   defaultType?: TransactionType;
   userId: string;
   defaultCategoryId: string;
-  onCreate: (payload: ICreateTransactionPayload) => Promise<TransactionEntity>;
+  onCreate: (payload: ICreateTransactionPayload) => Promise<void>;
 };
 
 export default function CreateTransactionModal({
