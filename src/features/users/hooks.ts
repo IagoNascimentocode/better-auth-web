@@ -25,7 +25,7 @@ export function useBalance(userId: string, opts?: { enabled?: boolean }) {
         method: "GET",
         credentials: "include",
       });
-      return normalizeBalance(res);
+      return res
     },
     // mantém o último valor enquanto revalida (sem flicker)
     placeholderData: (prev) => prev ?? 0,
