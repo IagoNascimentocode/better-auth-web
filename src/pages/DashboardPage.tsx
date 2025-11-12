@@ -70,24 +70,8 @@ export default function DashboardPage() {
 
   return (
     <div className="grid gap-6">
-      {/* Botões principais */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => openCreate("income")}
-          className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 font-semibold text-white shadow-sm active:scale-[0.99]"
-          style={{ backgroundColor: BRL_BLUE }}
-        >
-          <Plus className="h-4 w-4" /> Adicionar
-        </button>
-        <button
-          type="button"
-          onClick={() => openCreate("expense")}
-          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 font-semibold text-zinc-200 shadow-sm hover:bg-zinc-800 active:scale-[0.99]"
-        >
-          <Send className="h-4 w-4" /> Transferir
-        </button>
-      </div>
+      {/* Barra fixa de ações (sticky) */}
+
 
       {/* Cards compactos */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -126,7 +110,29 @@ export default function DashboardPage() {
           onRefresh={handleRefresh}
         />
       </div>
-
+      <div
+        className="
+          sticky top-4 z-20 flex flex-wrap items-center gap-3 rounded-2xl
+          border border-zinc-800 bg-zinc-950/60 backdrop-blur px-4 py-3
+        "
+        style={{ boxShadow: "0 10px 30px rgba(0,0,0,.35)" }}
+      >
+        <button
+          type="button"
+          onClick={() => openCreate("income")}
+          className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 font-semibold text-white shadow-sm active:scale-[0.99]"
+          style={{ backgroundColor: BRL_BLUE }}
+        >
+          <Plus className="h-4 w-4" /> Adicionar
+        </button>
+        <button
+          type="button"
+          onClick={() => openCreate("expense")}
+          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 font-semibold text-zinc-200 shadow-sm hover:bg-zinc-800 active:scale-[0.99]"
+        >
+          <Send className="h-4 w-4" /> Transferir
+        </button>
+      </div>
       {/* Modal de transação */}
       <CreateTransactionModal
         open={createOpen}
