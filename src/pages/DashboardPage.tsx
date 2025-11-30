@@ -8,7 +8,7 @@ import CreateTransactionModal from "../components/transactions/CreateTransaction
 import { DollarSign, Bitcoin, Wallet, Plus, Send } from "lucide-react";
 
 const DEFAULT_CATEGORY_ID =
-  import.meta.env.VITE_DEFAULT_CATEGORY_ID ?? "2db3bf90-d8e9-45de-b1d1-8e8ab9c749dd";
+  import.meta.env.VITE_DEFAULT_CATEGORY_ID ?? "dc463bc9-5dd2-41a2-b8e4-9e9dcff98a42";
 
 const BTC_ORANGE = "#f7931a";
 const USD_GREEN = "#16a34a";

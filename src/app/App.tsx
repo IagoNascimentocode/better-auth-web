@@ -6,6 +6,8 @@ import { Me } from "../components/me";
 import { SignUp } from "../components/sign-up";
 import { SignIn } from "../components/sign-in";
 import { useSession } from "../lib/useSession";
+import type { JSX } from "react";
+import WealthHubPage from "../pages/HealthHubPage";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { data: session, isLoading } = useSession();
@@ -37,6 +39,14 @@ export default function App() {
           >
             Transações
           </NavLink>
+        <NavLink
+          to="/wealth"
+          className={({ isActive }) =>
+            isActive ? "text-emerald-400" : "text-zinc-300"
+          }
+        >
+          Wealth Hub
+        </NavLink>
         </nav>
       </header>
 
@@ -61,6 +71,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <TransactionsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/wealth"
+            element={
+              <RequireAuth>
+                <WealthHubPage />
               </RequireAuth>
             }
           />
