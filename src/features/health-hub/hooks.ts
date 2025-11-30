@@ -1,13 +1,13 @@
 // src/features/wealth-hub/useWealthOverview.ts
 import React from "react";
 import { api } from "../../lib/http";
-import type { DashboardSummary, OperationType, PositionsResponse, WealthOverview } from "./types";
+import type {  DashboardSummary, OperationType, PositionsResponse, WealthOverview } from "./types";
 
 export function useWealthOverview(
   userId: string,
   from: string,
   to: string,
-  operationType: OperationType
+  operationType?: OperationType
 ) {
   const [data, setData] = React.useState<WealthOverview | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -15,7 +15,7 @@ export function useWealthOverview(
   const [lastUpdated, setLastUpdated] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!userId || !from || !to || !operationType) return;
+    if (!userId || !from || !to) return;
 
     let cancelled = false;
     setLoading(true);
@@ -30,24 +30,25 @@ export function useWealthOverview(
           operationType,
         });
 
-        // 1) posições + fx
         const positionsUrl =
           `/investment-transactions/investment-transactions/positions-with-fx/${userId}`;
-        console.log("[WealthHub] GET", positionsUrl);
         const positionsPromise = api<PositionsResponse>(positionsUrl, {
           method: "GET",
         });
 
-        // 2) resumo do dashboard com range de datas + operationType
+        // monta params SEM operationType por padrão
         const params = new URLSearchParams({
           userId,
           from, // yyyy-MM-dd
           to,   // yyyy-MM-dd
-          operationType,
         });
-        const summaryUrl = `/dashboard/summary?${params.toString()}`;
-        console.log("[WealthHub] GET", summaryUrl);
 
+        // só envia se tiver filtro
+        if (operationType) {
+          params.append("operationType", operationType);
+        }
+
+        const summaryUrl = `/dashboard/summary?${params.toString()}`;
         const summaryPromise = api<DashboardSummary>(summaryUrl, {
           method: "GET",
         });
@@ -56,11 +57,6 @@ export function useWealthOverview(
           positionsPromise,
           summaryPromise,
         ]);
-
-        console.log("[WealthHub] Responses", {
-          positionsRes,
-          summaryRes,
-        });
 
         if (cancelled) return;
 
@@ -89,6 +85,7 @@ export function useWealthOverview(
       cancelled = true;
     };
   }, [userId, from, to, operationType]);
+
 
   return { data, loading, error, lastUpdated };
 }

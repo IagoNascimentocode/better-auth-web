@@ -34,7 +34,8 @@ export default function WealthHubPage() {
 
   // filtro de tipo de operação
   const [operationType, setOperationType] =
-    React.useState<OperationType>("purchase");
+    React.useState<OperationType | undefined>(undefined);
+
 
   // carrega range inicial do localStorage (ou ano vigente)
   React.useEffect(() => {
@@ -243,15 +244,18 @@ export default function WealthHubPage() {
               Tipo de operação
             </span>
             <select
-              value={operationType}
-              onChange={(e) =>
-                setOperationType(e.target.value as OperationType)
-              }
+              value={operationType ?? ""} // "" representa "sem filtro"
+              onChange={(e) => {
+                const value = e.target.value as OperationType | "";
+                setOperationType(value || undefined); // "" -> undefined (não manda)
+              }}
               className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
             >
+              <option value="">Todas</option>
               <option value="purchase">Compras únicas</option>
               <option value="recurring">Recorrentes</option>
             </select>
+
           </div>
         </div>
       </header>
