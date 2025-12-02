@@ -78,7 +78,7 @@ export default function TransactionList({
         ...form,
         amount: form.amount != null ? String(form.amount) : undefined,
         date: form.date ? new Date(form.date).toISOString() : undefined,
-      };
+      } as Partial<TransactionEntity>;
 
       const updated = await onSave(id, payload);
       onLocalUpdate?.(updated);
@@ -142,6 +142,7 @@ export default function TransactionList({
                 />
 
                 <select
+                  aria-label="Tipo de Transação"
                   className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
                   value={(form.type as TransactionType) ?? "income"}
                   onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as TransactionType }))}
@@ -149,8 +150,14 @@ export default function TransactionList({
                   <option value="income">Entrada</option>
                   <option value="expense">Saída</option>
                 </select>
-
+                </div>
+              )}
+                
+                <label htmlFor="transaction-date" className="sr-only">
+                  Data da Transação
+                </label>
                 <input
+                 id="transaction-date"
                   type="datetime-local"
                   className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
                   value={isoToLocalInput(form.date ?? new Date().toISOString())}
@@ -176,8 +183,6 @@ export default function TransactionList({
 
                 {error && <p className="md:col-span-6 text-sm text-rose-400">{error}</p>}
               </div>
-            )}
-          </div>
         );
       })}
     </div>

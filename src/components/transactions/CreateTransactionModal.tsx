@@ -12,12 +12,13 @@ type Props = {
   onCreate: (payload: ICreateTransactionPayload) => Promise<void>;
 };
 
+
 export default function CreateTransactionModal({
   open, onClose, defaultType = "income", userId, defaultCategoryId, onCreate,
 }: Props) {
   const [title, setTitle] = React.useState("");
   const [amount, setAmount] = React.useState("");
-  const [type, setType] = React.useState<TransactionType>(defaultType);
+  const [type, setType] = React.useState<TransactionType | "">("");
   const [date, setDate] = React.useState(() => new Date().toISOString().slice(0,16));
   const [notes, setNotes] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -25,10 +26,12 @@ export default function CreateTransactionModal({
 
   React.useEffect(() => {
     if (open) {
-      setType(defaultType);
-      setTitle(""); setAmount(""); setNotes("");
+      setType("");
+      setTitle(""); 
+      setAmount(""); 
+      setNotes("");
       setDate(new Date().toISOString().slice(0,16));
-      setError(null);
+      setError(null);      
     }
   }, [open, defaultType]);
 
@@ -38,10 +41,14 @@ export default function CreateTransactionModal({
       setBusy(true);
       if (!title.trim()) throw new Error("Informe o título");
       if (!amount.trim() || Number.isNaN(Number(amount))) throw new Error("Valor inválido");
+      if (!type) {
+        throw new Error("Selecione o tipo da transação");
+      }
+
       const payload: ICreateTransactionPayload = {
         title: title.trim(),
         amount: Number(amount).toFixed(2),
-        type,
+        type: type as TransactionType,
         date: new Date(date).toISOString(),
         notes: notes.trim() || undefined,
         categoryId: defaultCategoryId,
@@ -72,29 +79,52 @@ export default function CreateTransactionModal({
       <form onSubmit={submit} className="grid grid-cols-1 gap-3">
         <input className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
                placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
+
         <div className="grid grid-cols-2 gap-3">
           <input className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
                  placeholder="Valor (ex: 123.45)" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <select className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
-                  value={type} onChange={(e) => setType(e.target.value as TransactionType)}>
+
+          <select
+            aria-label="Tipo de Transação"
+            className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+            value={type}
+            onChange={(e) => setType(e.target.value as TransactionType)}
+          >
+            <option value="" disabled hidden>Selecione o tipo</option>
             <option value="income">Entrada</option>
             <option value="expense">Saída</option>
           </select>
         </div>
-        <input type="datetime-local" className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
-               value={date} onChange={(e) => setDate(e.target.value)} />
-        <textarea className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
-                  placeholder="Notas (opcional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        
+        <label htmlFor="transaction-date" className="sr-only">
+          Data da Transação
+        </label>
+        <input
+           id="transaction-date"
+            type="datetime-local" 
+            className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+            value={date} 
+            onChange={(e) => setDate(e.target.value)} />
+
+        <textarea 
+            className="rounded-xl bg-zinc-800 border border-zinc-700/60 px-3 py-2 text-zinc-100"
+            placeholder="Notas (opcional)" 
+            value={notes} 
+            onChange={(e) => setNotes(e.target.value)} />
 
         {error && <p className="text-sm text-rose-400">{error}</p>}
 
         <div className="mt-2 flex items-center justify-end gap-2">
-          <button type="button" onClick={onClose}
-                  className="rounded-xl border border-zinc-700/60 bg-zinc-800 px-4 py-2 font-semibold text-zinc-200 hover:bg-zinc-700">
-            Cancelar
+          <button 
+              type="button" 
+              onClick={onClose}
+              className="rounded-xl border border-zinc-700/60 bg-zinc-800 px-4 py-2 font-semibold text-zinc-200 hover:bg-zinc-700">
+                Cancelar
           </button>
-          <button type="submit" disabled={busy}
-                  className="rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-emerald-950 hover:brightness-95 disabled:opacity-50">
+          <button 
+              type="submit" 
+              disabled={busy}
+              className="rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-emerald-950 hover:brightness-95 disabled:opacity-50">
             {busy ? "Salvando…" : "Salvar"}
           </button>
         </div>

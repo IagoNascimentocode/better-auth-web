@@ -1,5 +1,5 @@
 // src/features/transactions/types.ts
-export type TransactionType = "income" | "expense";
+export type TransactionType = "income" | "expense" ;
 
 export interface ICreateTransactionPayload {
   title: string;

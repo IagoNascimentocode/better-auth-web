@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form"
 import z from "zod";
 import { auth } from '../lib/auth'
 
+
 const signInSchema = z.object({
   email: z.email('Digite um e-mail válido'),
   password: z.string().min(3).max(100),

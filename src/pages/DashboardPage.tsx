@@ -6,9 +6,14 @@ import type { ICreateTransactionPayload, TransactionType } from "../features/tra
 import MiniBalanceCard from "../components/MiniBalanceCard";
 import CreateTransactionModal from "../components/transactions/CreateTransactionModal";
 import { DollarSign, Bitcoin, Wallet, Plus, Send } from "lucide-react";
+import CreateExpenseModal from "../components/expenses/CreateExpenseModal";
+
+// === IMPORTANTE: hook de expenses ===
+import { useCreateExpense } from "../features/expenses/mutations";
+import type { ICreateExpensesPayload } from "../features/expenses/types";
 
 const DEFAULT_CATEGORY_ID =
-  import.meta.env.VITE_DEFAULT_CATEGORY_ID ?? "2db3bf90-d8e9-45de-b1d1-8e8ab9c749dd";
+  import.meta.env.VITE_DEFAULT_CATEGORY_ID ?? "9f0d19e7-cd8c-4239-bbe7-396add884938";
 
 const BTC_ORANGE = "#f7931a";
 const USD_GREEN = "#16a34a";
@@ -41,12 +46,14 @@ export default function DashboardPage() {
   const brl = Number(data?.balance?.brl ?? 0);
   const usd = Number(data?.balance?.usd ?? 0);
   const btc = Number(data?.balance?.btc ?? 0);
-  const rates = data?.balance?.rates;
+  const rates = data?.balance?.rates ?? null;
 
   const createTx = useCreateTransaction(userId);
+  const createExpense = useCreateExpense(userId); // 👈 AQUI
 
-  // === Estado do modal ===
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [createPurchaseOpen, setCreatePurchaseOpen] = React.useState(false);
+  const [createRecurringOpen, setCreateRecurringOpen] = React.useState(false);
   const [prefillType, setPrefillType] = React.useState<TransactionType>("income");
 
   function openCreate(type: TransactionType) {
@@ -55,9 +62,18 @@ export default function DashboardPage() {
     setCreateOpen(true);
   }
 
+  function openCreatePurchaseModal() {
+    setCreatePurchaseOpen(true);
+  }
+
   async function onCreate(payload: ICreateTransactionPayload) {
     const enriched = { ...payload, categoryId: payload.categoryId ?? DEFAULT_CATEGORY_ID };
     await createTx.mutateAsync(enriched);
+    await refetch();
+  }
+
+  async function onCreateExpenseHandler(payload: ICreateExpensesPayload) {
+    await createExpense.mutateAsync(payload);
     await refetch();
   }
 
@@ -70,69 +86,89 @@ export default function DashboardPage() {
 
   return (
     <div className="grid gap-6">
-      {/* Barra fixa de ações (sticky) */}
 
-
-      {/* Cards compactos */}
+      {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MiniBalanceCard
           icon={<Wallet className="h-4 w-4" />}
           title="Saldo em Reais"
           primary={formatCurrency(brl, "BRL")}
-          subtitle={rates ? `1 BTC = ${formatCurrency(rates.btc_brl ?? 0, "BRL")}` : undefined}
+          subtitle={
+            rates ?
+              `1 BTC = ${formatCurrency(rates.btc_brl, "BRL")}`
+            : undefined
+          }
           accentHex={BRL_BLUE}
           loading={fetchingBalance}
           onRefresh={handleRefresh}
         />
+
         <MiniBalanceCard
           icon={<DollarSign className="h-4 w-4" />}
           title="Saldo em Dólares"
           primary={formatCurrency(usd, "USD")}
-          subtitle={rates ? `BRL/USD ≈ ${(rates.brl_usd ?? 0).toFixed(3)}` : undefined}
+          subtitle={
+            rates ? `BRL/USD ≈ ${(rates.brl_usd ?? 0).toFixed(3)}` : undefined
+          }
           accentHex={USD_GREEN}
           loading={fetchingBalance}
           onRefresh={handleRefresh}
         />
+
         <MiniBalanceCard
           icon={<Bitcoin className="h-4 w-4" />}
           title="Saldo em Bitcoin"
           primary={formatBTC(btc)}
           subtitle={
-            rates
-              ? `BTC/USD ≈ ${new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(rates.btc_usd ?? 0)}`
-              : undefined
+            rates ?
+              `BTC/USD ≈ ${new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD"
+              }).format(rates.btc_usd ?? 0)}`
+            : undefined
           }
           accentHex={BTC_ORANGE}
           loading={fetchingBalance}
           onRefresh={handleRefresh}
         />
       </div>
-      <div
-        className="
-          sticky top-4 z-20 flex flex-wrap items-center gap-3 rounded-2xl
-          border border-zinc-800 bg-zinc-950/60 backdrop-blur px-4 py-3
-        "
-        style={{ boxShadow: "0 10px 30px rgba(0,0,0,.35)" }}
-      >
+
+      {/* Botões */}
+      <div className="sticky top-4 z-20 flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/60 backdrop-blur px-4 py-3">
+        
         <button
           type="button"
           onClick={() => openCreate("income")}
-          className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 font-semibold text-white shadow-sm active:scale-[0.99]"
-          style={{ backgroundColor: BRL_BLUE }}
+          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 font-semibold text-zinc-200"
         >
-          <Plus className="h-4 w-4" /> Adicionar
+          <Plus className="h-4 w-4" /> Entrada / Saída
         </button>
+
         <button
           type="button"
           onClick={() => openCreate("expense")}
-          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 font-semibold text-zinc-200 shadow-sm hover:bg-zinc-800 active:scale-[0.99]"
+          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 font-semibold text-zinc-200"
         >
           <Send className="h-4 w-4" /> Transferir
         </button>
+
+        <button
+          type="button"
+          onClick={openCreatePurchaseModal}
+          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 font-semibold text-zinc-200"
+        >
+          <Send className="h-4 w-4" /> Compra Parcelada
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCreateRecurringOpen(true)}
+          className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 font-semibold text-zinc-200"
+        >
+          <Send className="h-4 w-4" /> Despesa Recorrente
+        </button>
       </div>
+
       {/* Modal de transação */}
       <CreateTransactionModal
         open={createOpen}
@@ -141,6 +177,26 @@ export default function DashboardPage() {
         userId={userId}
         defaultCategoryId={DEFAULT_CATEGORY_ID}
         onCreate={onCreate}
+      />
+
+      {/* Modal para compra parcelada */}
+      <CreateExpenseModal
+        open={createPurchaseOpen}
+        onClose={() => setCreatePurchaseOpen(false)}
+        userId={userId}
+        defaultCategoryId={DEFAULT_CATEGORY_ID}
+        operationTypePreset="purchase"
+        onCreate={onCreateExpenseHandler}
+      />
+
+      {/* Modal para despesa recorrente */}
+      <CreateExpenseModal
+        open={createRecurringOpen}
+        onClose={() => setCreateRecurringOpen(false)}
+        userId={userId}
+        defaultCategoryId={DEFAULT_CATEGORY_ID}
+        operationTypePreset="recurring"
+        onCreate={onCreateExpenseHandler}
       />
     </div>
   );
