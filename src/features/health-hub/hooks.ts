@@ -1,7 +1,12 @@
-// src/features/wealth-hub/useWealthOverview.ts
+
 import React from "react";
 import { api } from "../../lib/http";
-import type {  DashboardSummary, OperationType, PositionsResponse, WealthOverview } from "./types";
+import type {
+  DashboardSummary,
+  OperationType,
+  PositionsResponse,
+  WealthOverview,
+} from "./types";
 
 export function useWealthOverview(
   userId: string,
@@ -14,78 +19,73 @@ export function useWealthOverview(
   const [error, setError] = React.useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
+  const fetchAll = React.useCallback(async () => {
     if (!userId || !from || !to) return;
 
-    let cancelled = false;
     setLoading(true);
     setError(null);
 
-    async function fetchAll() {
-      try {
-        console.log("[WealthHub] Fetch iniciando", {
-          userId,
-          from,
-          to,
-          operationType,
-        });
+    try {
+      console.log("[WealthHub] Fetch iniciando", {
+        userId,
+        from,
+        to,
+        operationType,
+      });
 
-        const positionsUrl =
-          `/investment-transactions/investment-transactions/positions-with-fx/${userId}`;
-        const positionsPromise = api<PositionsResponse>(positionsUrl, {
-          method: "GET",
-        });
+      const positionsUrl =
+        `/investment-transactions/investment-transactions/positions-with-fx/${userId}`;
+      const positionsPromise = api<PositionsResponse>(positionsUrl, {
+        method: "GET",
+      });
 
-        // monta params SEM operationType por padrão
-        const params = new URLSearchParams({
-          userId,
-          from, // yyyy-MM-dd
-          to,   // yyyy-MM-dd
-        });
+      const params = new URLSearchParams({
+        userId,
+        from, // yyyy-MM-dd
+        to,   // yyyy-MM-dd
+      });
 
-        // só envia se tiver filtro
-        if (operationType) {
-          params.append("operationType", operationType);
-        }
-
-        const summaryUrl = `/dashboard/summary?${params.toString()}`;
-        const summaryPromise = api<DashboardSummary>(summaryUrl, {
-          method: "GET",
-        });
-
-        const [positionsRes, summaryRes] = await Promise.all([
-          positionsPromise,
-          summaryPromise,
-        ]);
-
-        if (cancelled) return;
-
-        setData({
-          positions: positionsRes.positions,
-          rates: positionsRes.rates,
-          period: summaryRes.period,
-          expenses: summaryRes.expenses,
-          installments: summaryRes.installments,
-        });
-        setLastUpdated(new Date().toISOString());
-      } catch (err) {
-        if (cancelled) return;
-        const msg =
-          err instanceof Error ? err.message : "Erro ao carregar Wealth Hub";
-        console.error("[WealthHub] Erro fetchAll", err);
-        setError(msg);
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (operationType) {
+        params.append("operationType", operationType);
       }
+
+      const summaryUrl = `/dashboard/summary?${params.toString()}`;
+      const summaryPromise = api<DashboardSummary>(summaryUrl, {
+        method: "GET",
+      });
+
+      const [positionsRes, summaryRes] = await Promise.all([
+        positionsPromise,
+        summaryPromise,
+      ]);
+
+      setData({
+        positions: positionsRes.positions,
+        rates: positionsRes.rates,
+        period: summaryRes.period,
+        expenses: summaryRes.expenses,
+        installments: summaryRes.installments,
+      });
+      setLastUpdated(new Date().toISOString());
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Erro ao carregar Wealth Hub";
+      console.error("[WealthHub] Erro fetchAll", err);
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-
-    fetchAll();
-
-    return () => {
-      cancelled = true;
-    };
   }, [userId, from, to, operationType]);
 
+  React.useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-  return { data, loading, error, lastUpdated };
+  return {
+    data,
+    loading,
+    error,
+    lastUpdated,
+    refetch: fetchAll,
+  };
 }
