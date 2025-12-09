@@ -1,7 +1,8 @@
-// src/app/App.tsx
+
 import { Routes, Route, NavLink, Navigate } from "react-router-dom";
 import DashboardPage from "../pages/DashboardPage";
 import TransactionsPage from "../pages/TransactionsPage";
+import ExpensesPage from "../pages/ExpensesPage";
 import { Me } from "../components/me";
 import { SignUp } from "../components/sign-up";
 import { SignIn } from "../components/sign-in";
@@ -22,7 +23,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <header className="border-b border-zinc-800">
-        <nav className="mx-auto max-w-5xl flex items-center gap-4 p-4">
+        <nav className="mx-auto flex max-w-5xl items-center gap-4 p-4">
           <NavLink
             to="/bank"
             className={({ isActive }) =>
@@ -31,6 +32,7 @@ export default function App() {
           >
             Dashboard
           </NavLink>
+
           <NavLink
             to="/transactions"
             className={({ isActive }) =>
@@ -39,14 +41,24 @@ export default function App() {
           >
             Transações
           </NavLink>
-        <NavLink
-          to="/wealth"
-          className={({ isActive }) =>
-            isActive ? "text-emerald-400" : "text-zinc-300"
-          }
-        >
-          Wealth Hub
-        </NavLink>
+
+          <NavLink
+            to="/expenses"
+            className={({ isActive }) =>
+              isActive ? "text-emerald-400" : "text-zinc-300"
+            }
+          >
+            Despesas
+          </NavLink>
+
+          <NavLink
+            to="/wealth"
+            className={({ isActive }) =>
+              isActive ? "text-emerald-400" : "text-zinc-300"
+            }
+          >
+            Wealth Hub
+          </NavLink>
         </nav>
       </header>
 
@@ -71,6 +83,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <TransactionsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/expenses"
+            element={
+              <RequireAuth>
+                <ExpensesPage />
               </RequireAuth>
             }
           />
